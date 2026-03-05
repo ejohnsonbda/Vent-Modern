@@ -290,6 +290,21 @@ header {
 }
 .btn-reset:hover { background: var(--surface-4); border-color: var(--border-hover); color: var(--text-primary); }
 
+.year-btns {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 14px;
+}
+.year-btns-label {
+  font-size: 11px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase;
+  color: var(--text-muted); margin-right: 4px;
+}
+.yr-btn {
+  padding: 6px 18px; border-radius: 20px; border: 1.5px solid var(--border);
+  background: transparent; color: var(--text-secondary); font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all .18s ease; font-family: inherit;
+}
+.yr-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(249,115,22,.08); }
+.yr-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 2px 12px rgba(249,115,22,.35); }
+.yr-btn-all.active { background: var(--surface-2); border-color: var(--border); color: var(--text-primary); box-shadow: none; }
 .stats-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
 .stat-chip {
   display: inline-flex; align-items: center; gap: 6px;
@@ -550,6 +565,14 @@ dialog::backdrop { background: rgba(0,0,0,.72); backdrop-filter: blur(6px); }
           <button class="btn-reset" id="resetBtn">Reset</button>
         </div>
       </div>
+      <div class="year-btns">
+        <span class="year-btns-label">Quick Year:</span>
+        <button class="yr-btn" data-year="2023">2023</button>
+        <button class="yr-btn" data-year="2024">2024</button>
+        <button class="yr-btn" data-year="2025">2025</button>
+        <button class="yr-btn" data-year="2026">2026</button>
+        <button class="yr-btn yr-btn-all" data-year="">All</button>
+      </div>
       <div class="stats-bar">
         <span class="stat-chip">Showing <strong id="shownCount">0</strong></span>
         <span class="stat-chip">Total <strong id="totalCount">0</strong></span>
@@ -792,19 +815,23 @@ function initializeApp() {
   els.closeDlg.onclick = () => els.dlg.close();
   els.q.oninput = e => { FILTERS.q = e.target.value; applyFilters(); };
   els.feeling.onchange = e => { FILTERS.feeling = e.target.value; applyFilters(); };
-  document.getElementById('year').onchange = e => {
-    FILTERS.year = e.target.value;
+  function setYearFilter(yr) {
+    FILTERS.year = yr;
+    document.getElementById('year').value = yr;
     const chip = document.getElementById('yearChip'), val = document.getElementById('yearChipVal');
-    if (FILTERS.year) { chip.style.display='inline-flex'; val.textContent = FILTERS.year; } else { chip.style.display='none'; }
+    if (yr) { chip.style.display='inline-flex'; val.textContent = yr; } else { chip.style.display='none'; }
+    document.querySelectorAll('.yr-btn').forEach(b => b.classList.toggle('active', b.dataset.year === yr));
     applyFilters();
-  };
+  }
+  document.getElementById('year').onchange = e => setYearFilter(e.target.value);
+  document.querySelectorAll('.yr-btn').forEach(b => b.addEventListener('click', () => setYearFilter(b.dataset.year)));
   els.from.onchange = e => { FILTERS.from = e.target.value; applyFilters(); };
   els.to.onchange = e => { FILTERS.to = e.target.value; applyFilters(); };
   els.sort.onchange = e => { FILTERS.sort = e.target.value; applyFilters(); };
   els.reset.onclick = () => {
     FILTERS = {q:'',feeling:'',year:'',from:'',to:'',sort:'new'};
-    els.q.value=''; els.feeling.value=''; document.getElementById('year').value=''; els.from.value=''; els.to.value=''; els.sort.value='new';
-    document.getElementById('yearChip').style.display='none';
+    els.q.value=''; els.feeling.value=''; els.from.value=''; els.to.value=''; els.sort.value='new';
+    setYearFilter('');
     applyFilters();
   };
   applyFilters();
