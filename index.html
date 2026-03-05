@@ -262,10 +262,10 @@ header {
   background: var(--surface-1); border-bottom: 1px solid var(--border); padding: 18px 24px;
 }
 .filters-inner { max-width: 1280px; margin: 0 auto; }
-.filters-grid {
-  display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 12px; align-items: end;
+  .filters-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr auto; gap: 12px; align-items: end;
 }
-@media (max-width: 900px) { .filters-grid { grid-template-columns: 1fr 1fr 1fr; } }
+@media (max-width: 1100px) { .filters-grid { grid-template-columns: 1fr 1fr 1fr; } }
 @media (max-width: 600px) { .filters-grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 400px) { .filters-grid { grid-template-columns: 1fr; } }
 
@@ -527,6 +527,10 @@ dialog::backdrop { background: rgba(0,0,0,.72); backdrop-filter: blur(6px); }
           <select id="feeling"><option value="">All feelings</option></select>
         </div>
         <div class="fg">
+          <label for="year">Year</label>
+          <select id="year"><option value="">All years</option></select>
+        </div>
+        <div class="fg">
           <label for="dateFrom">From</label>
           <input id="dateFrom" type="date" />
         </div>
@@ -550,6 +554,7 @@ dialog::backdrop { background: rgba(0,0,0,.72); backdrop-filter: blur(6px); }
         <span class="stat-chip">Showing <strong id="shownCount">0</strong></span>
         <span class="stat-chip">Total <strong id="totalCount">0</strong></span>
         <span class="stat-chip">Feelings <strong id="feelingCount">0</strong></span>
+        <span class="stat-chip" id="yearChip" style="display:none">Year <strong id="yearChipVal"></strong></span>
       </div>
     </div>
   </section>
@@ -632,7 +637,7 @@ const els = {
   dlgOwner:$('#dlgOwner'), closeDlg:$('#closeDlg'),
 };
 
-let DATA = [], VALID_CREDENTIALS = [], FILTERS = {q:'',feeling:'',from:'',to:'',sort:'new'}, VIEW = [], credentialsLoaded = false;
+let DATA = [], VALID_CREDENTIALS = [], FILTERS = {q:'',feeling:'',year:'',from:'',to:'',sort:'new'}, VIEW = [], credentialsLoaded = false;
 
 function showApp() {
   loginOverlay.classList.add('hidden'); appView.classList.remove('hidden');
@@ -707,6 +712,13 @@ function buildFeelingList() {
   els.feeling.innerHTML = '<option value="">All feelings</option>' + feelings.map(f => `<option value="${f}">${f}</option>`).join('');
   const el = document.getElementById('feelingCount'); if (el) el.textContent = feelings.length;
 }
+function buildYearList() {
+  const years = [...new Set(DATA.map(i => {
+    const d = new Date(i["Created Date"]); return isNaN(d.getTime()) ? null : d.getFullYear();
+  }).filter(Boolean))].sort((a,b) => b - a);
+  const yearSel = document.getElementById('year');
+  yearSel.innerHTML = '<option value="">All years</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
+}
 function calculateFeelingStats() {
   const counts = {};
   DATA.forEach(i => { const f = i["I am felling"]; if (f) counts[f] = (counts[f]||0)+1; });
@@ -728,6 +740,9 @@ function applyFilters() {
   const q = FILTERS.q.toLowerCase();
   VIEW = DATA.filter(d => {
     if (FILTERS.feeling && d["I am felling"] !== FILTERS.feeling) return false;
+    if (FILTERS.year) {
+      const dd = new Date(d["Created Date"]); if (isNaN(dd.getTime()) || dd.getFullYear() !== parseInt(FILTERS.year)) return false;
+    }
     if (FILTERS.from && new Date(d["Created Date"]) < new Date(FILTERS.from+"T00:00:00")) return false;
     if (FILTERS.to   && new Date(d["Created Date"]) > new Date(FILTERS.to+"T23:59:59.999")) return false;
     if (q && !JSON.stringify(d).toLowerCase().includes(q)) return false;
@@ -773,15 +788,23 @@ function openDetail(id) {
 }
 function initializeApp() {
   buildFeelingList();
+  buildYearList();
   els.closeDlg.onclick = () => els.dlg.close();
   els.q.oninput = e => { FILTERS.q = e.target.value; applyFilters(); };
   els.feeling.onchange = e => { FILTERS.feeling = e.target.value; applyFilters(); };
+  document.getElementById('year').onchange = e => {
+    FILTERS.year = e.target.value;
+    const chip = document.getElementById('yearChip'), val = document.getElementById('yearChipVal');
+    if (FILTERS.year) { chip.style.display='inline-flex'; val.textContent = FILTERS.year; } else { chip.style.display='none'; }
+    applyFilters();
+  };
   els.from.onchange = e => { FILTERS.from = e.target.value; applyFilters(); };
   els.to.onchange = e => { FILTERS.to = e.target.value; applyFilters(); };
   els.sort.onchange = e => { FILTERS.sort = e.target.value; applyFilters(); };
   els.reset.onclick = () => {
-    FILTERS = {q:'',feeling:'',from:'',to:'',sort:'new'};
-    els.q.value=''; els.feeling.value=''; els.from.value=''; els.to.value=''; els.sort.value='new';
+    FILTERS = {q:'',feeling:'',year:'',from:'',to:'',sort:'new'};
+    els.q.value=''; els.feeling.value=''; document.getElementById('year').value=''; els.from.value=''; els.to.value=''; els.sort.value='new';
+    document.getElementById('yearChip').style.display='none';
     applyFilters();
   };
   applyFilters();
