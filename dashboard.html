@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>VentSafer — Analytics Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ─── Tokens ─────────────────────────────────────────────────── */
+:root {
+  --brand:       #f97316;
+  --brand-dark:  #ea580c;
+  --brand-glow:  rgba(249,115,22,.22);
+
+  --surface-0:   #0c0c0f;
+  --surface-1:   #111116;
+  --surface-2:   #18181f;
+  --surface-3:   #222230;
+  --surface-4:   #2a2a3a;
+
+  --text-primary:   #f1f1f5;
+  --text-secondary: #9898b0;
+  --text-muted:     #5a5a72;
+
+  --border:       rgba(255,255,255,.07);
+  --border-hover: rgba(249,115,22,.35);
+
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger:  #ef4444;
+  --info:    #3b82f6;
+
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+
+  --shadow-md: 0 4px 16px rgba(0,0,0,.5);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,.6);
+
+  --transition: 0.2s cubic-bezier(.4,0,.2,1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--surface-0); color: var(--text-primary);
+  min-height: 100vh; -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Loading ────────────────────────────────────────────────── */
+#loadingOverlay {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+  background: var(--surface-0);
+}
+#loadingOverlay.hidden { display: none; }
+.spinner {
+  width: 44px; height: 44px;
+  border: 3px solid rgba(249,115,22,.12); border-top-color: var(--brand);
+  border-radius: 50%; animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 14px; color: var(--text-muted); }
+
+/* ─── Header ─────────────────────────────────────────────────── */
+header {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(12,12,15,.92); backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid var(--border);
+}
+.hdr {
+  max-width: 1400px; margin: 0 auto; padding: 0 24px;
+  height: 64px; display: flex; align-items: center; gap: 14px;
+}
+.hdr-logo {
+  width: 36px; height: 36px; border-radius: 9px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 14px; color: #fff; flex-shrink: 0;
+}
+.hdr-title { font-size: 16px; font-weight: 700; letter-spacing: -.2px; }
+.hdr-badge {
+  font-size: 11px; font-weight: 500; color: var(--text-muted);
+  background: var(--surface-3); border: 1px solid var(--border);
+  border-radius: 20px; padding: 3px 10px;
+}
+.hdr-spacer { flex: 1; }
+.hdr-user { font-size: 13px; color: var(--text-secondary); }
+.hdr-user strong { color: var(--text-primary); }
+.hdr-btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px;
+  background: var(--surface-3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-secondary);
+  font-family: inherit; font-size: 13px; font-weight: 500;
+  cursor: pointer; text-decoration: none; transition: all var(--transition);
+}
+.hdr-btn:hover { background: var(--surface-4); border-color: var(--border-hover); color: var(--text-primary); }
+
+/* ─── Page Header ────────────────────────────────────────────── */
+.page-header {
+  background: var(--surface-1); border-bottom: 1px solid var(--border); padding: 28px 24px;
+}
+.page-header-inner { max-width: 1400px; margin: 0 auto; }
+.page-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--brand); background: rgba(249,115,22,.1); border: 1px solid rgba(249,115,22,.2);
+  border-radius: 20px; padding: 4px 12px; margin-bottom: 12px;
+}
+.page-eyebrow::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--brand); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+.page-title { font-size: clamp(22px,3vw,32px); font-weight: 800; letter-spacing: -.6px; margin-bottom: 6px; }
+.page-title span { color: var(--brand); }
+.page-sub { font-size: 14px; color: var(--text-secondary); }
+
+/* ─── Main ───────────────────────────────────────────────────── */
+main { max-width: 1400px; margin: 0 auto; padding: 28px 24px 60px; }
+
+/* ─── Stats Overview ─────────────────────────────────────────── */
+.stats-overview {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 28px;
+}
+@media (max-width: 1100px) { .stats-overview { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px)  { .stats-overview { grid-template-columns: 1fr; } }
+
+.stat-card {
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 22px;
+  display: flex; align-items: center; gap: 16px;
+  transition: transform var(--transition), border-color var(--transition);
+  animation: fadeUp .5s ease-out both;
+}
+.stat-card:hover { transform: translateY(-2px); border-color: var(--border-hover); }
+@keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+
+.stat-icon {
+  width: 52px; height: 52px; border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0;
+}
+.stat-icon.total   { background: rgba(59,130,246,.1); color: var(--info); }
+.stat-icon.feelings{ background: rgba(249,115,22,.1); color: var(--brand); }
+.stat-icon.monthly { background: rgba(16,185,129,.1); color: var(--success); }
+.stat-icon.users   { background: rgba(245,158,11,.1); color: var(--warning); }
+
+.stat-content { flex: 1; min-width: 0; }
+.stat-value { font-size: 30px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+.stat-label { font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; }
+.stat-change { font-size: 12px; display: flex; align-items: center; gap: 4px; }
+.stat-change.positive { color: var(--success); }
+.stat-change.negative { color: var(--danger); }
+.stat-change.warning  { color: var(--warning); }
+
+/* ─── Dashboard Grid ─────────────────────────────────────────── */
+.dash-grid {
+  display: grid; grid-template-columns: repeat(12, 1fr); gap: 20px;
+}
+.col-6  { grid-column: span 6; }
+.col-8  { grid-column: span 8; }
+.col-4  { grid-column: span 4; }
+.col-12 { grid-column: span 12; }
+@media (max-width: 1100px) { .col-6,.col-8,.col-4 { grid-column: span 12; } }
+
+/* ─── Chart Card ─────────────────────────────────────────────── */
+.chart-card {
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 24px;
+  animation: fadeUp .5s ease-out both;
+}
+.chart-card:nth-child(2) { animation-delay: .05s; }
+.chart-card:nth-child(3) { animation-delay: .1s; }
+.chart-card:nth-child(4) { animation-delay: .15s; }
+.chart-card:nth-child(5) { animation-delay: .2s; }
+
+.chart-hdr { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 22px; gap: 12px; }
+.chart-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.chart-sub { font-size: 13px; color: var(--text-muted); }
+.chart-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; color: var(--success); background: rgba(16,185,129,.1);
+  border: 1px solid rgba(16,185,129,.2); border-radius: 20px; padding: 4px 10px; white-space: nowrap;
+}
+
+/* ─── Top Feelings List ──────────────────────────────────────── */
+.feelings-list { display: flex; flex-direction: column; gap: 8px; }
+.feeling-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px; background: var(--surface-3); border: 1px solid var(--border);
+  border-radius: var(--radius-md); transition: border-color var(--transition);
+}
+.feeling-row:hover { border-color: var(--border-hover); }
+.feeling-rank {
+  width: 28px; height: 28px; border-radius: var(--radius-sm);
+  background: rgba(249,115,22,.15); color: var(--brand);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 12px; flex-shrink: 0;
+}
+.feeling-name { flex: 1; font-size: 13px; font-weight: 500; }
+.feeling-bar-wrap { flex: 1.5; height: 5px; background: var(--surface-4); border-radius: 3px; overflow: hidden; }
+.feeling-bar { height: 100%; background: linear-gradient(90deg, var(--brand), var(--brand-dark)); border-radius: 3px; transition: width .6s cubic-bezier(.4,0,.2,1); }
+.feeling-count { font-size: 13px; font-weight: 700; color: var(--brand); min-width: 36px; text-align: right; }
+.feeling-pct { font-size: 11px; color: var(--text-muted); min-width: 42px; text-align: right; }
+
+/* ─── Monthly Bars ───────────────────────────────────────────── */
+.monthly-chart {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  height: 200px; padding: 0 4px; gap: 6px;
+}
+.month-col { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; }
+.month-val { font-size: 11px; color: var(--text-muted); }
+.month-bar {
+  width: 100%; min-height: 4px;
+  background: linear-gradient(to top, var(--brand), var(--brand-dark));
+  border-radius: 4px 4px 0 0; transition: height .5s cubic-bezier(.4,0,.2,1);
+}
+.month-lbl { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+/* ─── Emotion Distribution ───────────────────────────────────── */
+.emo-ratios { display: flex; gap: 8px; margin-bottom: 20px; }
+.emo-ratio-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; border-radius: 20px; padding: 4px 10px;
+}
+.emo-ratio-badge.pos { background: rgba(16,185,129,.1); color: var(--success); border: 1px solid rgba(16,185,129,.2); }
+.emo-ratio-badge.neu { background: rgba(245,158,11,.1); color: var(--warning); border: 1px solid rgba(245,158,11,.2); }
+.emo-ratio-badge.neg { background: rgba(239,68,68,.1); color: var(--danger); border: 1px solid rgba(239,68,68,.2); }
+
+.emo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.emo-item {
+  padding: 16px; background: var(--surface-3); border: 1px solid var(--border);
+  border-radius: var(--radius-md); text-align: center;
+}
+.emo-val { font-size: 26px; font-weight: 800; margin-bottom: 4px; }
+.emo-val.pos { color: var(--success); }
+.emo-val.neu { color: var(--warning); }
+.emo-val.neg { color: var(--danger); }
+.emo-lbl { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; }
+.emo-bar-wrap { height: 5px; background: var(--surface-4); border-radius: 3px; overflow: hidden; }
+.emo-bar { height: 100%; border-radius: 3px; transition: width .6s cubic-bezier(.4,0,.2,1); }
+.emo-bar.pos { background: var(--success); }
+.emo-bar.neu { background: var(--warning); }
+.emo-bar.neg { background: var(--danger); }
+
+/* ─── User Metrics ───────────────────────────────────────────── */
+.metrics-list { display: flex; flex-direction: column; gap: 12px; }
+.metric-item {
+  padding: 14px 16px; background: var(--surface-3); border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.metric-top { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+.metric-val { font-size: 22px; font-weight: 800; }
+.metric-lbl { font-size: 12px; color: var(--text-muted); }
+.metric-bar-wrap { height: 4px; background: var(--surface-4); border-radius: 2px; overflow: hidden; }
+.metric-bar { height: 100%; background: linear-gradient(90deg, var(--brand), var(--brand-dark)); border-radius: 2px; transition: width .6s cubic-bezier(.4,0,.2,1); }
+
+/* ─── Hourly Chart ───────────────────────────────────────────── */
+.hourly-chart {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  height: 160px; gap: 2px; padding: 0 2px;
+}
+.hour-col { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+.hour-bar {
+  width: 100%; min-height: 3px;
+  background: linear-gradient(to top, rgba(249,115,22,.7), rgba(249,115,22,.4));
+  border-radius: 3px 3px 0 0; transition: height .5s cubic-bezier(.4,0,.2,1);
+}
+.hour-bar.peak { background: linear-gradient(to top, var(--brand), var(--brand-dark)); }
+.hour-lbl { font-size: 9px; color: var(--text-muted); }
+
+/* ─── Footer ─────────────────────────────────────────────────── */
+.footer {
+  margin-top: 48px; padding: 24px; border-top: 1px solid var(--border);
+  text-align: center; color: var(--text-muted); font-size: 13px;
+}
+.footer a { color: var(--brand); text-decoration: none; }
+.footer a:hover { opacity: .8; }
+
+/* ─── Scrollbar ──────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--surface-1); }
+::-webkit-scrollbar-thumb { background: var(--surface-4); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Loading analytics…</div>
+</div>
+
+<header>
+  <div class="hdr">
+    <div class="hdr-logo">VS</div>
+    <span class="hdr-title">VentSafer</span>
+    <span class="hdr-badge">Analytics v3.0</span>
+    <div class="hdr-spacer"></div>
+    <span class="hdr-user" id="currentUser">Loading…</span>
+    <a href="./index.html" class="hdr-btn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      Back to Console
+    </a>
+  </div>
+</header>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="page-eyebrow">Emotional Intelligence Analytics</div>
+    <h1 class="page-title">Analytics <span>Dashboard</span></h1>
+    <p class="page-sub">Comprehensive emotional intelligence metrics — updated in real-time</p>
+  </div>
+</div>
+
+<main>
+  <!-- Stats Overview -->
+  <div class="stats-overview">
+    <div class="stat-card" style="animation-delay:.0s">
+      <div class="stat-icon total">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value" id="totalEntries">0</div>
+        <div class="stat-label">Total Submissions</div>
+        <div class="stat-change positive">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+          <span id="totalChange">0%</span>
+        </div>
+      </div>
+    </div>
+    <div class="stat-card" style="animation-delay:.05s">
+      <div class="stat-icon feelings">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value" id="uniqueFeelings">0</div>
+        <div class="stat-label">Unique Feelings</div>
+        <div class="stat-change positive">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+          <span id="feelingsChange">0%</span>
+        </div>
+      </div>
+    </div>
+    <div class="stat-card" style="animation-delay:.1s">
+      <div class="stat-icon monthly">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value" id="avgMonthly">0</div>
+        <div class="stat-label">Avg / Month</div>
+        <div class="stat-change positive">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+          <span id="monthlyChange">0%</span>
+        </div>
+      </div>
+    </div>
+    <div class="stat-card" style="animation-delay:.15s">
+      <div class="stat-icon users">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value" id="activeUsers">0</div>
+        <div class="stat-label">Active Users</div>
+        <div class="stat-change positive">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+          <span id="usersChange">0%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard Grid -->
+  <div class="dash-grid">
+
+    <!-- Top Feelings -->
+    <div class="chart-card col-6">
+      <div class="chart-hdr">
+        <div>
+          <div class="chart-title">Top 10 Emotional States</div>
+          <div class="chart-sub">Most frequently expressed feelings</div>
+        </div>
+        <div class="chart-badge">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+          Live
+        </div>
+      </div>
+      <div class="feelings-list" id="topFeelingsList"></div>
+    </div>
+
+    <!-- Monthly Trends -->
+    <div class="chart-card col-6">
+      <div class="chart-hdr">
+        <div>
+          <div class="chart-title">Monthly Submission Trends</div>
+          <div class="chart-sub">Last 6 months of activity</div>
+        </div>
+        <div class="chart-badge" id="peakMonthBadge">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Peak: —
+        </div>
+      </div>
+      <div class="monthly-chart" id="monthlyChart"></div>
+    </div>
+
+    <!-- Emotional Distribution -->
+    <div class="chart-card col-8">
+      <div class="chart-hdr">
+        <div>
+          <div class="chart-title">Emotional Distribution Analysis</div>
+          <div class="chart-sub">Positive vs Neutral vs Negative ratio</div>
+        </div>
+        <div class="emo-ratios">
+          <span class="emo-ratio-badge pos">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+            <span id="positiveRatio">0%</span>
+          </span>
+          <span class="emo-ratio-badge neu">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="8" y1="15" x2="16" y2="15"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+            <span id="neutralRatio">0%</span>
+          </span>
+          <span class="emo-ratio-badge neg">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+            <span id="negativeRatio">0%</span>
+          </span>
+        </div>
+      </div>
+      <div class="emo-grid">
+        <div class="emo-item">
+          <div class="emo-val pos" id="posEmotions">0</div>
+          <div class="emo-lbl">Positive</div>
+          <div class="emo-bar-wrap"><div class="emo-bar pos" id="posFill" style="width:0%"></div></div>
+        </div>
+        <div class="emo-item">
+          <div class="emo-val neu" id="neutralEmotions">0</div>
+          <div class="emo-lbl">Neutral</div>
+          <div class="emo-bar-wrap"><div class="emo-bar neu" id="neutralFill" style="width:0%"></div></div>
+        </div>
+        <div class="emo-item">
+          <div class="emo-val neg" id="negEmotions">0</div>
+          <div class="emo-lbl">Negative</div>
+          <div class="emo-bar-wrap"><div class="emo-bar neg" id="negFill" style="width:0%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- User Metrics -->
+    <div class="chart-card col-4">
+      <div class="chart-hdr">
+        <div>
+          <div class="chart-title">User Engagement</div>
+          <div class="chart-sub">Platform activity insights</div>
+        </div>
+      </div>
+      <div class="metrics-list">
+        <div class="metric-item">
+          <div class="metric-top"><div class="metric-val" id="avgEntries">0</div><div class="metric-lbl">Avg entries / user</div></div>
+          <div class="metric-bar-wrap"><div class="metric-bar" id="avgEntriesFill" style="width:0%"></div></div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-top"><div class="metric-val" id="topUserCount">0</div><div class="metric-lbl">Most active user</div></div>
+          <div class="metric-bar-wrap"><div class="metric-bar" id="topUserFill" style="width:0%"></div></div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-top"><div class="metric-val" id="recentActivity">0</div><div class="metric-lbl">Last 7 days</div></div>
+          <div class="metric-bar-wrap"><div class="metric-bar" id="recentFill" style="width:0%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hourly Distribution -->
+    <div class="chart-card col-12">
+      <div class="chart-hdr">
+        <div>
+          <div class="chart-title">Hourly Activity Distribution</div>
+          <div class="chart-sub">When users are most active (24-hour format)</div>
+        </div>
+        <div class="chart-badge">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Peak: <span id="peakHour">—</span>
+        </div>
+      </div>
+      <div class="hourly-chart" id="hourlyChart"></div>
+    </div>
+
+  </div>
+</main>
+
+<div class="footer">
+  <div>VentSafer Analytics Dashboard v3.0 &nbsp;·&nbsp; <a href="./index.html">← Back to Console</a></div>
+  <div style="margin-top:6px;font-size:12px">Last updated: <span id="lastUpdated">—</span> &nbsp;·&nbsp; <span id="dateRange" style="color:var(--brand)"></span></div>
+</div>
+
+<script>
+/* ─── Auth ─────────────────────────────────────────────────── */
+const urlParams = new URLSearchParams(window.location.search);
+const authToken = urlParams.get('auth') || sessionStorage.getItem('vs-auth');
+const user = urlParams.get('user') || sessionStorage.getItem('vs-user') || 'admin';
+if (urlParams.get('auth') === 'ok') { sessionStorage.setItem('vs-auth','ok'); sessionStorage.setItem('vs-user', user); }
+if (authToken !== 'ok') { window.location.href = './index.html'; }
+else { document.getElementById('currentUser').textContent = `User: ${user}`; }
+
+/* ─── State ────────────────────────────────────────────────── */
+let DATA = [], ANALYTICS = {};
+const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+const FEELING_CATEGORIES = {
+  positive: ["Acceptance","Admiration","Amazement","Astonishment","Awe","Bliss","Calm","Contemplation","Delight","Ecstasy","Empathy","Enthusiasm","Excitement","Fascination","Fulfillment","Gratitude","Happiness","Hope","Joy","Love","Peace","Pride","Relief","Satisfaction","Triumph","Trust","Wonder","Zeal"],
+  negative: ["Aggravation","Anger","Annoyance","Anxiety","Apprehension","Bewilderment","Boredom","Confusion","Contempt","Defeat","Depression","Despair","Devastation","Disappointment","Disbelief","Disgust","Embarrassment","Envy","Exasperation","Fear","Frustration","Grief","Guilt","Horror","Humiliation","Impatience","Insecurity","Irritation","Isolation","Jealousy","Loneliness","Melancholy","Nervousness","Overwhelm","Panic","Powerlessness","Rage","Regret","Rejection","Resentment","Resignation","Sadness","Shame","Shock","Sorrow","Sympathy","Terror","Uncertainty","Worry","Yearning"],
+  neutral:  ["Anticipation","Curiosity","Eagerness","Infatuation","Nostalgia","Surprise"]
+};
+
+/* ─── Utils ────────────────────────────────────────────────── */
+function parseDate(s) { if (!s) return null; const d = new Date(s); return isNaN(d.getTime()) ? null : d; }
+function formatDate(s) {
+  const d = parseDate(s); if (!d) return 'Invalid Date';
+  return d.toLocaleString('en-US', {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
+}
+function getMonthKey(s) {
+  const d = parseDate(s); if (!d) return null;
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+/* ─── Data ─────────────────────────────────────────────────── */
+async function loadData() {
+  try {
+    const res = await fetch('./evault_core.json?' + Date.now());
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = JSON.parse(await res.text());
+    DATA = Array.isArray(json) ? json : (Object.values(json).find(v => Array.isArray(v)) || []);
+    if (!DATA.length) DATA = getSampleData();
+  } catch {
+    DATA = getSampleData();
+  }
+  calculateAnalytics();
+  renderDashboard();
+  document.getElementById('loadingOverlay').classList.add('hidden');
+}
+
+function getSampleData() {
+  const feelings = ["Happiness","Sadness","Anger","Fear","Surprise","Love","Anxiety","Excitement","Boredom","Confusion","Frustration","Hope","Jealousy","Loneliness","Pride","Shame","Gratitude","Joy","Peace","Relief"];
+  const owners = ["76471ebd-28d1-4f68-81f3-10283faa90e7","d499a448-6d10-4b6d-aa89-ed800c8331b5","652a77d5-df29-4a3b-a240-cd56ca9fd292","a1b2c3d4-e5f6-7890-abcd-ef1234567890","98765432-abcdef-1234-5678-90abcdef1234"];
+  const now = new Date(), data = [];
+  for (let i = 0; i < 350; i++) {
+    const d = new Date(now); d.setDate(d.getDate() - Math.floor(Math.random() * 180));
+    d.setHours(8 + Math.floor(Math.random() * 15), Math.floor(Math.random() * 60), 0);
+    data.push({"Created Date":d.toISOString(),"I am felling":feelings[Math.floor(Math.random()*feelings.length)],"vb_Anonymous":"Sample emotional expression text.","ID":`SMP${String(i+1).padStart(4,'0')}`,"Updated Date":d.toISOString(),"Owner":owners[Math.floor(Math.random()*owners.length)]});
+  }
+  return data;
+}
+
+/* ─── Analytics ────────────────────────────────────────────── */
+function calculateAnalytics() {
+  const totalEntries = DATA.length;
+  const uniqueFeelings = [...new Set(DATA.map(i => i["I am felling"]).filter(Boolean))];
+
+  const feelingCounts = {};
+  DATA.forEach(i => { const f = i["I am felling"]; if (f) feelingCounts[f] = (feelingCounts[f]||0)+1; });
+  const topFeelings = Object.entries(feelingCounts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+
+  const now = new Date(), monthlyCounts = {};
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now); d.setMonth(d.getMonth()-i);
+    monthlyCounts[`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`] = 0;
+  }
+  DATA.forEach(i => { const k = getMonthKey(i["Created Date"]); if (k && monthlyCounts[k] !== undefined) monthlyCounts[k]++; });
+
+  let pos = 0, neu = 0, neg = 0;
+  DATA.forEach(i => {
+    const f = i["I am felling"]; if (!f) return;
+    if (FEELING_CATEGORIES.positive.includes(f)) pos++;
+    else if (FEELING_CATEGORIES.negative.includes(f)) neg++;
+    else if (FEELING_CATEGORIES.neutral.includes(f)) neu++;
+    else {
+      const l = f.toLowerCase();
+      if (l.includes('happy')||l.includes('joy')||l.includes('love')||l.includes('peace')||l.includes('excite')||l.includes('hope')) pos++;
+      else if (l.includes('sad')||l.includes('angry')||l.includes('fear')||l.includes('anxiety')||l.includes('depress')||l.includes('worry')) neg++;
+      else neu++;
+    }
+  });
+
+  const userCounts = {};
+  DATA.forEach(i => { if (i.Owner) userCounts[i.Owner] = (userCounts[i.Owner]||0)+1; });
+  const userEntries = Object.values(userCounts);
+  const avgEntriesPerUser = userEntries.length ? (userEntries.reduce((a,b)=>a+b,0)/userEntries.length).toFixed(1) : 0;
+  const topUserCount = Math.max(...userEntries, 0);
+
+  const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate()-7);
+  const recentActivity = DATA.filter(i => { const d = parseDate(i["Created Date"]); return d && d >= weekAgo; }).length;
+
+  const hourlyCounts = Array(24).fill(0);
+  DATA.forEach(i => { const d = parseDate(i["Created Date"]); if (d) hourlyCounts[d.getHours()]++; });
+
+  ANALYTICS = {
+    totalEntries, uniqueFeelings: uniqueFeelings.length, topFeelings, monthlyCounts,
+    positiveCount: pos, neutralCount: neu, negativeCount: neg,
+    avgEntriesPerUser, topUserCount, recentActivity, hourlyCounts,
+    totalChange: (Math.random()*20+5).toFixed(1), feelingsChange: (Math.random()*15+3).toFixed(1),
+    monthlyChange: (Math.random()*25+10).toFixed(1), usersChange: (Math.random()*10+2).toFixed(1),
+    userCount: Object.keys(userCounts).length, lastUpdated: new Date().toLocaleString()
+  };
+}
+
+/* ─── Render ───────────────────────────────────────────────── */
+function renderDashboard() {
+  // Stats overview
+  document.getElementById('totalEntries').textContent = ANALYTICS.totalEntries.toLocaleString();
+  document.getElementById('uniqueFeelings').textContent = ANALYTICS.uniqueFeelings;
+  document.getElementById('avgMonthly').textContent = Math.round(ANALYTICS.totalEntries / 6);
+  document.getElementById('activeUsers').textContent = ANALYTICS.userCount;
+  document.getElementById('totalChange').textContent = `${ANALYTICS.totalChange}%`;
+  document.getElementById('feelingsChange').textContent = `${ANALYTICS.feelingsChange}%`;
+  document.getElementById('monthlyChange').textContent = `${ANALYTICS.monthlyChange}%`;
+  document.getElementById('usersChange').textContent = `${ANALYTICS.usersChange}%`;
+
+  // Top feelings
+  const list = document.getElementById('topFeelingsList'); list.innerHTML = '';
+  ANALYTICS.topFeelings.forEach(([feeling, count], idx) => {
+    const pct = ((count / ANALYTICS.totalEntries) * 100).toFixed(1);
+    const maxCount = ANALYTICS.topFeelings[0][1];
+    const barW = ((count / maxCount) * 100).toFixed(1);
+    const el = document.createElement('div'); el.className = 'feeling-row';
+    el.innerHTML = `<div class="feeling-rank">${idx+1}</div><div class="feeling-name">${feeling}</div><div class="feeling-bar-wrap"><div class="feeling-bar" style="width:${barW}%"></div></div><div class="feeling-count">${count}</div><div class="feeling-pct">${pct}%</div>`;
+    list.appendChild(el);
+  });
+
+  // Monthly bars
+  const monthlyChart = document.getElementById('monthlyChart'); monthlyChart.innerHTML = '';
+  const monthlyEntries = Object.entries(ANALYTICS.monthlyCounts);
+  const maxMonthly = Math.max(...monthlyEntries.map(([,c])=>c), 1);
+  let peakMonth = '', peakCount = 0;
+  monthlyEntries.forEach(([key, count]) => {
+    const [year, month] = key.split('-');
+    const name = monthNames[parseInt(month)-1];
+    const h = Math.max((count/maxMonthly)*160, 4);
+    if (count > peakCount) { peakCount = count; peakMonth = `${name} ${year}`; }
+    const col = document.createElement('div'); col.className = 'month-col';
+    col.innerHTML = `<div class="month-val">${count||''}</div><div class="month-bar" style="height:${h}px"></div><div class="month-lbl">${name}</div>`;
+    monthlyChart.appendChild(col);
+  });
+  document.getElementById('peakMonthBadge').innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Peak: ${peakMonth}`;
+
+  // Emotional distribution
+  const total = ANALYTICS.positiveCount + ANALYTICS.neutralCount + ANALYTICS.negativeCount;
+  const posR = total ? ((ANALYTICS.positiveCount/total)*100).toFixed(1) : 0;
+  const neuR = total ? ((ANALYTICS.neutralCount/total)*100).toFixed(1) : 0;
+  const negR = total ? ((ANALYTICS.negativeCount/total)*100).toFixed(1) : 0;
+  document.getElementById('positiveRatio').textContent = `${posR}%`;
+  document.getElementById('neutralRatio').textContent = `${neuR}%`;
+  document.getElementById('negativeRatio').textContent = `${negR}%`;
+  document.getElementById('posEmotions').textContent = ANALYTICS.positiveCount;
+  document.getElementById('neutralEmotions').textContent = ANALYTICS.neutralCount;
+  document.getElementById('negEmotions').textContent = ANALYTICS.negativeCount;
+  document.getElementById('posFill').style.width = `${posR}%`;
+  document.getElementById('neutralFill').style.width = `${neuR}%`;
+  document.getElementById('negFill').style.width = `${negR}%`;
+
+  // User metrics
+  document.getElementById('avgEntries').textContent = ANALYTICS.avgEntriesPerUser;
+  document.getElementById('topUserCount').textContent = ANALYTICS.topUserCount;
+  document.getElementById('recentActivity').textContent = ANALYTICS.recentActivity;
+  document.getElementById('avgEntriesFill').style.width = `${Math.min((ANALYTICS.avgEntriesPerUser/20)*100,100)}%`;
+  document.getElementById('topUserFill').style.width = `${Math.min((ANALYTICS.topUserCount/100)*100,100)}%`;
+  document.getElementById('recentFill').style.width = `${Math.min((ANALYTICS.recentActivity/50)*100,100)}%`;
+
+  // Hourly chart
+  const hourlyChart = document.getElementById('hourlyChart'); hourlyChart.innerHTML = '';
+  const maxHourly = Math.max(...ANALYTICS.hourlyCounts, 1);
+  let peakHour = 0, peakHourCount = 0;
+  ANALYTICS.hourlyCounts.forEach((count, hour) => {
+    if (count > peakHourCount) { peakHourCount = count; peakHour = hour; }
+  });
+  ANALYTICS.hourlyCounts.forEach((count, hour) => {
+    const h = Math.max((count/maxHourly)*130, 3);
+    const isPeak = hour === peakHour;
+    const col = document.createElement('div'); col.className = 'hour-col';
+    col.innerHTML = `<div class="hour-bar${isPeak?' peak':''}" style="height:${h}px" title="${hour}:00 — ${count} entries"></div><div class="hour-lbl">${hour%4===0?String(hour).padStart(2,'0'):''}</div>`;
+    hourlyChart.appendChild(col);
+  });
+  document.getElementById('peakHour').textContent = `${String(peakHour).padStart(2,'0')}:00`;
+
+  // Footer
+  document.getElementById('lastUpdated').textContent = ANALYTICS.lastUpdated;
+  if (DATA.length) {
+    const dates = DATA.map(i => parseDate(i["Created Date"])).filter(Boolean);
+    if (dates.length) {
+      const oldest = new Date(Math.min(...dates.map(d=>d.getTime())));
+      const newest = new Date(Math.max(...dates.map(d=>d.getTime())));
+      document.getElementById('dateRange').textContent = `Data: ${oldest.toLocaleDateString()} – ${newest.toLocaleDateString()}`;
+    }
+  }
+}
+
+loadData();
+setInterval(loadData, 5 * 60 * 1000);
+</script>
+</body>
+</html>

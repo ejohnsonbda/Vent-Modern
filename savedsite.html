@@ -1,0 +1,1513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ventsafer – Secure Case Management</title>
+<style>
+  :root{
+    --bg: #ffffff;
+    --text: #1a1a1a;
+    --muted: #666666;
+    --card: #ffffff;
+    --ring: #f9731622;
+    --brand: #f97316;
+    --brand-2: #4b5563;
+    --chip-orange: #fef3c7;
+    --chip-gray: #f5f5f5;
+    --border: #e5e5e5;
+    --shadow: 0 4px 12px rgba(0,0,0,.08);
+    --radius: 12px;
+  }
+  *{box-sizing:border-box}
+  body{ margin:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; background: var(--bg); color: var(--text); }
+  
+  /* Login Overlay */
+  #loginOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(0,0,0,.8);
+    backdrop-filter: blur(8px);
+  }
+  #loginOverlay.hidden { display: none; }
+  
+  .login-card {
+    width: 100%;
+    max-width: 440px;
+    border-radius: var(--radius);
+    background: white;
+    box-shadow: var(--shadow), 0 0 0 1px rgba(249,115,22,.1);
+    border: 1px solid var(--border);
+  }
+  
+  .login-content {
+    padding: 40px;
+  }
+  
+  .login-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  
+  .login-logo {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--brand), #ea580c);
+    box-shadow: 0 4px 20px rgba(249,115,22,.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: white;
+    font-size: 18px;
+  }
+  
+  .login-title h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  
+  .login-subtitle {
+    color: var(--muted);
+    font-size: 14px;
+    margin-top: 4px;
+  }
+  
+  .login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .form-group {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .form-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  
+  .form-input {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    background: white;
+    color: var(--text);
+    outline: none;
+    transition: all 0.2s;
+  }
+  
+  .form-input:focus {
+    box-shadow: 0 0 0 3px var(--ring);
+    border-color: var(--brand);
+  }
+  
+  .error-msg {
+    color: #ef4444;
+    font-size: 14px;
+    display: none;
+    padding: 8px 12px;
+    background: rgba(239,68,68,.1);
+    border-radius: 6px;
+  }
+  
+  .error-msg.show {
+    display: block;
+  }
+  
+  .login-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+  }
+  
+  .login-btn {
+    flex: 1;
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    background: linear-gradient(135deg, var(--brand), #ea580c);
+    color: white;
+    transition: all 0.2s;
+  }
+  
+  .login-btn:hover {
+    background: linear-gradient(135deg, #ea580c, #c2410c);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(249,115,22,.4);
+  }
+  
+  .clear-btn {
+    border-radius: 8px;
+    padding: 12px 20px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: white;
+    color: var(--text);
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+  
+  .clear-btn:hover {
+    background: #f9f9f9;
+    border-color: var(--brand);
+  }
+  
+  /* Loading State */
+  .loading {
+    color: var(--muted);
+    text-align: center;
+    font-size: 14px;
+    padding: 20px;
+  }
+  
+  /* Main App Styles */
+  #app { display: block; }
+  #app.hidden { display: none; }
+  
+  /* Black Header */
+  header{ 
+    position:sticky; 
+    top:0; 
+    background: #0a0a0a; 
+    border-bottom:1px solid #333; 
+    z-index:10; 
+  }
+  .wrap{ max-width:1200px; margin:0 auto; padding:20px 24px; }
+  .title{ display:flex; align-items:center; gap:16px; margin:8px 0 16px; }
+  .logo{ 
+    width:44px; 
+    height:44px; 
+    border-radius:10px; 
+    background: linear-gradient(135deg, var(--brand), #ea580c);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: white;
+    font-size: 16px;
+  }
+  h1{ 
+    font-size: 24px; 
+    margin:0; 
+    font-weight: 600;
+    color: white;
+  }
+  .subtitle{ 
+    color: #a3a3a3; 
+    font-size: 14px; 
+  }
+  
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-left: auto;
+  }
+  
+  .user-badge {
+    color: #a3a3a3;
+    font-size: 14px;
+  }
+  
+  .logout-btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid #333;
+    background: #262626;
+    color: white;
+    font-size: 13px;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  
+  .logout-btn:hover {
+    background: #333;
+    border-color: var(--brand);
+  }
+  
+  /* Dashboard Buttons */
+  .dashboard-btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid #333;
+    background: #262626;
+    color: white;
+    font-size: 13px;
+    cursor: pointer;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+  }
+  
+  .dashboard-btn:hover {
+    background: #333;
+    border-color: var(--brand);
+  }
+  
+  .dashboard-buttons {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  /* Hero Section with Image Background */
+  .hero-section {
+    background: 
+      linear-gradient(rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.9)),
+      url('./tmbg.jpg') center/cover no-repeat;
+    border-bottom: 1px solid #333;
+    padding: 60px 24px;
+    position: relative;
+    min-height: 500px;
+    display: flex;
+    align-items: center;
+  }
+  
+  .hero-content {
+    max-width: 900px;
+    margin: 0 auto;
+    width: 100%;
+    position: relative;
+    z-index: 2;
+  }
+  
+  .hero-title {
+    font-size: 36px;
+    font-weight: 700;
+    color: white;
+    margin: 0 0 28px;
+    text-align: center;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+  
+  .hero-text {
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(249, 115, 22, 0.3);
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-bottom: 40px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  }
+  
+  .hero-text p {
+    color: white;
+    line-height: 1.6;
+    margin: 0 0 16px;
+    font-size: 16px;
+    opacity: 0.95;
+  }
+  
+  .hero-reminder {
+    background: rgba(249,115,22,0.2);
+    border: 1px solid rgba(249,115,22,0.4);
+    border-radius: 8px;
+    padding: 18px;
+    margin-top: 24px;
+    color: #ffb347;
+    font-weight: 500;
+    border-left: 4px solid var(--brand);
+  }
+  
+  /* Hero Search */
+  .hero-search {
+    max-width: 700px;
+    margin: 0 auto;
+  }
+  
+  .hero-search-container {
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(249, 115, 22, 0.3);
+    border-radius: var(--radius);
+    padding: 28px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  
+  .hero-search-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--brand);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .hero-search-wrapper {
+    position: relative;
+  }
+  
+  .search-icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--brand);
+  }
+  
+  .hero-search-input {
+    width: 100%;
+    padding: 14px 16px 14px 48px;
+    font-size: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    outline: none;
+    transition: all 0.3s;
+  }
+  
+  .hero-search-input:focus {
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.3);
+    border-color: var(--brand);
+    background: rgba(255, 255, 255, 0.15);
+  }
+  
+  .hero-search-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+  }
+  
+  .search-hint {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 13px;
+    margin-top: 12px;
+    text-align: center;
+  }
+  
+  /* Filter Section */
+  .filter-section {
+    background: #f8f9fa;
+    border-bottom: 1px solid var(--border);
+    padding: 24px;
+  }
+
+  .toolbar{ 
+    display:grid; 
+    gap:16px; 
+    grid-template-columns: repeat(4, 1fr) 120px; 
+  }
+  @media (max-width: 960px){ .toolbar{ grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 640px){ .toolbar{ grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 480px){ .toolbar{ grid-template-columns: 1fr; } }
+
+  label{ 
+    font-size:13px; 
+    color:var(--muted); 
+    display:block; 
+    margin:0 0 8px; 
+  }
+  input, select, button{ 
+    width:100%; 
+    border:1px solid var(--border); 
+    border-radius:8px; 
+    padding:12px 16px; 
+    background:white; 
+    color:var(--text); 
+    outline: none; 
+  }
+  input:focus, select:focus{ 
+    box-shadow: 0 0 0 3px var(--ring); 
+    border-color: var(--brand); 
+  }
+  .btn{ 
+    cursor:pointer; 
+    border:1px solid var(--border); 
+    background:white; 
+    font-weight: 500;
+  }
+  .btn:hover {
+    background: #f9f9f9;
+    border-color: var(--brand);
+  }
+
+  .stats{ 
+    display:flex; 
+    gap:16px; 
+    align-items:center; 
+    flex-wrap:wrap; 
+    margin-top:20px; 
+    color:var(--muted); 
+    font-size:14px; 
+  }
+  .chip{ 
+    display:inline-flex; 
+    align-items:center; 
+    gap:8px; 
+    padding:8px 16px; 
+    border-radius:20px; 
+    border:1px solid var(--border); 
+    background:var(--chip-gray); 
+  }
+  .chip strong{ color:var(--brand); }
+
+  main{ padding:24px; background: #f8f9fa; }
+  .grid{ display:grid; grid-template-columns: repeat(3, 1fr); gap:20px; }
+  @media (max-width: 1024px){ .grid{ grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 640px){ .grid{ grid-template-columns: 1fr; } }
+
+  /* White Cards with ID under feeling */
+  .card{ 
+    border:1px solid var(--border); 
+    border-radius: var(--radius); 
+    background: white; 
+    box-shadow: var(--shadow); 
+    display:flex; 
+    flex-direction:column; 
+    overflow:hidden; 
+    min-height: 180px; 
+    cursor: pointer; 
+    transition: all 0.2s ease;
+  }
+  .card:hover { 
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0,0,0,.15);
+    border-color: var(--brand);
+  }
+  .card-head{ 
+    display:flex; 
+    flex-direction: column;
+    gap: 4px;
+    padding:16px 20px; 
+    border-bottom:1px solid var(--border); 
+    background:#f9f9f9;
+  }
+  .feeling{ 
+    font-weight:600; 
+    font-size:15px; 
+    color: var(--brand);
+  }
+  .card-id {
+    font-size: 11px;
+    color: #666;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+  }
+  .meta{ 
+    padding:12px 20px; 
+    color:var(--muted); 
+    font-size:13px; 
+    display:flex; 
+    gap:16px; 
+    flex-wrap:wrap; 
+    background: white;
+  }
+  .body{ 
+    padding: 20px; 
+    flex:1; 
+    display:flex; 
+    flex-direction:column; 
+    gap:12px; 
+    background: white;
+  }
+  .snippet{ 
+    line-height:1.5; 
+    display:-webkit-box; 
+    -webkit-line-clamp: 4; 
+    -webkit-box-orient: vertical; 
+    overflow:hidden;
+    color: #333333;
+  }
+
+  .footerbar{ 
+    position: sticky; 
+    bottom:0; 
+    background: white; 
+    border-top:1px solid var(--border); 
+  }
+  .footerbar .wrap{ 
+    display:flex; 
+    align-items:center; 
+    justify-content:space-between; 
+    gap:12px; 
+    padding: 16px 24px;
+  }
+
+  /* Modal - White with dark text */
+  dialog{ 
+    border:none; 
+    border-radius: var(--radius); 
+    padding:0; 
+    background: white;
+    border: 1px solid var(--border);
+    box-shadow: 0 20px 60px rgba(0,0,0,.2);
+  }
+  dialog::backdrop{ 
+    background: rgba(0,0,0,.6); 
+    backdrop-filter: blur(4px);
+  }
+  .modal-head{ 
+    padding:16px 20px; 
+    border-bottom:1px solid var(--border); 
+    background: white;
+    display:flex; 
+    align-items:center; 
+    justify-content:space-between; 
+  }
+  .modal-body{ 
+    padding:24px; 
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  .modal-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .close-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: white;
+    color: var(--text);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 400;
+    transition: all 0.2s;
+    padding: 0;
+  }
+  .close-btn:hover {
+    background: #f97316;
+    color: white;
+    border-color: #f97316;
+  }
+  .kv{ 
+    display:grid; 
+    grid-template-columns: 140px 1fr; 
+    gap:12px; 
+    margin:20px 0; 
+  }
+  .kv div{ 
+    padding:12px 16px; 
+    background:#f9f9f9; 
+    border-radius:8px; 
+    border:1px solid var(--border); 
+    font-size:14px; 
+  }
+  .kv div:first-child {
+    font-weight: 600;
+    color: #333;
+    background: #f5f5f5;
+  }
+  .note{ 
+    font-size:13px; 
+    color:var(--muted); 
+  }
+  
+  .modal-text {
+    line-height: 1.6;
+    color: #333;
+    margin: 0 0 20px;
+    font-size: 15px;
+    white-space: pre-wrap;
+    background: #f9f9f9;
+    padding: 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+
+  /* Dashboard Modal */
+  #dashboardDlg {
+    width: min(500px, 92vw);
+  }
+  
+  .dashboard-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  
+  .dashboard-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  
+  .dashboard-subtitle {
+    color: var(--muted);
+    font-size: 13px;
+    margin-top: 4px;
+  }
+  
+  .feeling-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 20px;
+  }
+  
+  .feeling-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: #f9f9f9;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  
+  .feeling-name {
+    font-weight: 500;
+    color: var(--text);
+    flex: 1;
+  }
+  
+  .feeling-count {
+    font-weight: 600;
+    color: var(--brand);
+    min-width: 40px;
+    text-align: right;
+  }
+  
+  .feeling-bar {
+    height: 8px;
+    background: #e5e5e5;
+    border-radius: 4px;
+    margin-top: 4px;
+    overflow: hidden;
+  }
+  
+  .feeling-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--brand), #ea580c);
+    border-radius: 4px;
+    transition: width 0.5s ease;
+  }
+  
+  .dashboard-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-top: 24px;
+  }
+  
+  .stat-box {
+    padding: 16px;
+    background: #f9f9f9;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    text-align: center;
+  }
+  
+  .stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--brand);
+    margin-bottom: 4px;
+  }
+  
+  .stat-label {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+</style>
+</head>
+<body>
+  <!-- Login Overlay -->
+  <div id="loginOverlay" aria-live="polite">
+    <div class="login-card">
+      <div class="login-content">
+        <div class="login-header">
+          <div class="login-logo" aria-hidden="true">VS</div>
+          <div class="login-title">
+            <h2>Secure Access</h2>
+            <p class="login-subtitle">Authorized personnel only</p>
+          </div>
+        </div>
+
+        <form class="login-form" onsubmit="return false;">
+          <div class="form-group">
+            <label for="username" class="form-label">Username</label>
+            <input 
+              id="username" 
+              type="text"
+              class="form-input"
+              placeholder="Enter username"
+              autofocus
+            />
+          </div>
+          
+          <div class="form-group">
+            <label for="password" class="form-label">Password</label>
+            <input 
+              id="password" 
+              type="password"
+              class="form-input"
+              placeholder="Enter password"
+            />
+          </div>
+          
+          <p id="loginError" class="error-msg">Invalid credentials</p>
+          <div id="loadingMsg" class="loading" style="display: none;">Loading credentials...</div>
+          
+          <div class="login-actions">
+            <button type="button" id="loginBtn" class="login-btn">Sign In</button>
+            <button type="button" id="clearBtn" class="clear-btn">Clear</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Application -->
+  <div id="app" class="hidden">
+    <!-- Black Header -->
+    <header>
+      <div class="wrap">
+        <div class="title">
+          <div class="logo" aria-hidden="true">VS</div>
+          <div>
+            <h1>VENTSAFER SECURE PORTAL</h1>
+            <div class="subtitle">Confidential database v2.4</div>
+          </div>
+          <div class="user-info">
+            <div class="dashboard-buttons">
+              <a href="./dashboard.html" class="dashboard-btn" id="externalDashboardBtn" target="_blank">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+                Full Dashboard
+              </a>
+              <button class="dashboard-btn" id="dashboardBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 3v18h18"></path>
+                  <path d="M3 9h18"></path>
+                  <path d="M3 15h18"></path>
+                  <path d="M9 3v18"></path>
+                </svg>
+                Quick Stats
+              </button>
+            </div>
+            <span class="user-badge">User: <strong id="currentUser">admin</strong></span>
+            <button class="logout-btn" id="logoutBtn">Logout</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Hero Section with Image Background -->
+    <section class="hero-section">
+      <div class="hero-content">
+        <h2 class="hero-title">SECURE ADMINISTRATION CONSOLE</h2>
+        <div class="hero-text">
+          <p>Welcome to the Ventsafer Secure Administration Console. This platform enables authorized personnel to securely monitor and analyze anonymized user submissions while maintaining the highest standards of data protection.</p>
+          <p>All data within this system is encrypted at rest and in transit. Each entry represents an anonymized emotional expression, stripped of personally identifiable information while preserving analytical value for our emotional intelligence algorithms.</p>
+          <p class="hero-reminder">SECURITY PROTOCOL: This console contains Level 3 confidential data. Unauthorized access, sharing, or distribution of this information violates corporate policy and international data protection regulations.</p>
+        </div>
+        
+        <div class="hero-search">
+          <div class="hero-search-container">
+            <label for="q" class="hero-search-label">Database Query Interface</label>
+            <div class="hero-search-wrapper">
+              <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+              <input id="q" type="search" class="hero-search-input" placeholder="Enter search parameters: text, ID, or encrypted UUID..." />
+            </div>
+            <p class="search-hint">Real-time search across encrypted emotional intelligence database</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="filter-section">
+      <div class="wrap">
+        <div class="toolbar">
+          <div>
+            <label for="feeling">Feeling</label>
+            <select id="feeling">
+              <option value="">All feelings</option>
+            </select>
+          </div>
+          <div>
+            <label for="dateFrom">From</label>
+            <input id="dateFrom" type="date" />
+          </div>
+          <div>
+            <label for="dateTo">To</label>
+            <input id="dateTo" type="date" />
+          </div>
+          <div>
+            <label for="sort">Sort</label>
+            <select id="sort">
+              <option value="new">Newest</option>
+              <option value="old">Oldest</option>
+            </select>
+          </div>
+          <div>
+            <button class="btn" id="resetBtn">Reset</button>
+          </div>
+        </div>
+
+        <div class="stats">
+          <span class="chip">Shown: <strong id="shownCount">0</strong></span>
+          <span class="chip">Total: <span id="totalCount">0</span></span>
+          <span class="chip">Feelings: <span id="feelingCount">0</span></span>
+        </div>
+      </div>
+    </section>
+
+    <main class="wrap">
+      <div id="grid" class="grid"></div>
+    </main>
+
+    <div class="footerbar">
+      <div class="wrap">
+        <div class="note">
+          <div>Click a card to view details | 
+            <a href="./dashboard.html" style="color: var(--brand); text-decoration: none; font-weight: 500;">
+              Open Full Dashboard →
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <dialog id="detailDlg">
+      <div class="modal-head">
+        <div class="modal-title">
+          <span id="dlgFeeling" class="feeling"></span>
+          <strong id="dlgId">#</strong>
+        </div>
+        <button class="close-btn" id="closeDlg" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-text" id="dlgText"></div>
+        <div class="kv">
+          <div><strong>Created</strong></div>
+          <div id="dlgCreated"></div>
+          <div><strong>Updated</strong></div>
+          <div id="dlgUpdated"></div>
+          <div><strong>Owner</strong></div>
+          <div id="dlgOwner"></div>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Quick Stats Modal -->
+    <dialog id="dashboardDlg">
+      <div class="modal-head">
+        <div>
+          <div class="dashboard-title">Emotional Analytics Dashboard</div>
+          <div class="dashboard-subtitle">Top 10 most frequent emotional states</div>
+        </div>
+        <button class="close-btn" id="closeDashboardBtn" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="dashboard-stats-grid">
+          <div class="stat-box">
+            <div class="stat-value" id="totalEntries">0</div>
+            <div class="stat-label">Total Entries</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="uniqueFeelings">0</div>
+            <div class="stat-label">Unique Feelings</div>
+          </div>
+        </div>
+        
+        <div class="feeling-stats" id="feelingStats">
+          <!-- Feeling stats will be populated here -->
+        </div>
+        
+        <div class="note" style="margin-top: 20px;">
+          Data updated in real-time. Based on current filter settings.
+          <br>
+          <a href="./dashboard.html" style="color: var(--brand); text-decoration: none; font-weight: 500;">
+            Open Full Dashboard for more analytics →
+          </a>
+        </div>
+      </div>
+    </dialog>
+  </div>
+
+<script>
+// DOM Elements
+const loginOverlay = document.getElementById('loginOverlay');
+const appView = document.getElementById('app');
+const usernameEl = document.getElementById('username');
+const passwordEl = document.getElementById('password');
+const loginError = document.getElementById('loginError');
+const loadingMsg = document.getElementById('loadingMsg');
+const loginBtn = document.getElementById('loginBtn');
+const clearBtn = document.getElementById('clearBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+const currentUserEl = document.getElementById('currentUser');
+const dashboardBtn = document.getElementById('dashboardBtn');
+const externalDashboardBtn = document.getElementById('externalDashboardBtn');
+const dashboardDlg = document.getElementById('dashboardDlg');
+const closeDashboardBtn = document.getElementById('closeDashboardBtn');
+
+// App state
+let DATA = [];
+let VALID_CREDENTIALS = [];
+let FILTERS = {q:'',feeling:'',from:'',to:'',sort:'new'};
+let VIEW = [];
+let credentialsLoaded = false;
+
+// DOM shortcuts
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+
+// App elements
+const els = {
+  grid: $('#grid'),
+  q: $('#q'),
+  feeling: $('#feeling'),
+  from: $('#dateFrom'),
+  to: $('#dateTo'),
+  sort: $('#sort'),
+  reset: $('#resetBtn'),
+  dlg: $('#detailDlg'),
+  dlgFeeling: $('#dlgFeeling'),
+  dlgId: $('#dlgId'),
+  dlgText: $('#dlgText'),
+  dlgCreated: $('#dlgCreated'),
+  dlgUpdated: $('#dlgUpdated'),
+  dlgOwner: $('#dlgOwner'),
+  closeDlg: $('#closeDlg')
+};
+
+// Authentication functions
+function showApp() {
+  loginOverlay.classList.add('hidden');
+  appView.classList.remove('hidden');
+  sessionStorage.setItem('vs-auth', 'ok');
+  sessionStorage.setItem('vs-user', usernameEl.value.trim());
+  currentUserEl.textContent = usernameEl.value.trim();
+  loadData();
+}
+
+function showLogin() {
+  appView.classList.add('hidden');
+  loginOverlay.classList.remove('hidden');
+  sessionStorage.removeItem('vs-auth');
+  sessionStorage.removeItem('vs-user');
+  usernameEl.value = '';
+  passwordEl.value = '';
+  loginError.classList.remove('show');
+}
+
+function attemptLogin() {
+  if (!credentialsLoaded) {
+    loginError.textContent = 'Credentials still loading. Please wait...';
+    loginError.classList.add('show');
+    return;
+  }
+
+  const username = usernameEl.value.trim();
+  const password = passwordEl.value;
+  
+  console.log('Login attempt for user:', username);
+  console.log('Checking against', VALID_CREDENTIALS.length, 'credentials');
+  
+  // Check against loaded credentials
+  const isValid = VALID_CREDENTIALS.some(cred => 
+    cred.username === username && cred.password === password
+  );
+  
+  if (isValid) {
+    console.log('✓ Login successful');
+    loginError.classList.remove('show');
+    showApp();
+  } else {
+    console.log('✗ Login failed - invalid credentials');
+    loginError.textContent = 'Invalid credentials';
+    loginError.classList.add('show');
+  }
+}
+
+// Parse different possible JSON formats
+function parseCredentials(data) {
+  // Format 1: Direct array [{"username": "x", "password": "y"}, ...]
+  if (Array.isArray(data)) {
+    console.log('Format detected: Direct array');
+    return data;
+  }
+  
+  // Format 2: Object with credentials array {"credentials": [...]}
+  if (data.credentials && Array.isArray(data.credentials)) {
+    console.log('Format detected: Object with credentials property');
+    return data.credentials;
+  }
+  
+  // Format 3: Object with users array {"users": [...]}
+  if (data.users && Array.isArray(data.users)) {
+    console.log('Format detected: Object with users property');
+    return data.users;
+  }
+  
+  // Format 4: Object where each key is username {"user1": "pass1", "user2": "pass2"}
+  if (typeof data === 'object' && !Array.isArray(data)) {
+    console.log('Format detected: Key-value pairs');
+    return Object.entries(data).map(([username, password]) => ({
+      username,
+      password: String(password)
+    }));
+  }
+  
+  console.warn('Unknown JSON format');
+  return [];
+}
+
+// Load credentials from passcore.json
+async function loadCredentials() {
+  console.log('═══════════════════════════════════════');
+  console.log('CREDENTIAL LOADING START');
+  console.log('═══════════════════════════════════════');
+  
+  try {
+    loadingMsg.style.display = 'block';
+    loadingMsg.textContent = 'Loading credentials...';
+    
+    console.log('Attempting to fetch: ./passcore.json');
+    console.log('Current URL:', window.location.href);
+    console.log('Base path:', window.location.pathname);
+    
+    const response = await fetch('./passcore.json?' + Date.now()); // Cache bust
+    
+    console.log('Response status:', response.status);
+    console.log('Response OK:', response.ok);
+    console.log('Response type:', response.type);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const rawText = await response.text();
+    console.log('Raw response length:', rawText.length);
+    console.log('Raw response preview:', rawText.substring(0, 200));
+    
+    let credData;
+    try {
+      credData = JSON.parse(rawText);
+      console.log('✓ JSON parsed successfully');
+      console.log('Parsed data type:', typeof credData);
+      console.log('Parsed data:', credData);
+    } catch (parseError) {
+      throw new Error(`JSON Parse Error: ${parseError.message}`);
+    }
+    
+    // Parse credentials in different formats
+    const parsedCreds = parseCredentials(credData);
+    console.log('Parsed credentials count:', parsedCreds.length);
+    
+    if (parsedCreds.length === 0) {
+      throw new Error('No valid credentials found in passcore.json');
+    }
+    
+    // Validate each credential has username and password
+    const validCreds = parsedCreds.filter(cred => {
+      const isValid = cred.username && cred.password;
+      if (!isValid) {
+        console.warn('Invalid credential entry:', cred);
+      }
+      return isValid;
+    });
+    
+    console.log('Valid credentials after filtering:', validCreds.length);
+    
+    // Add break-glass admin account
+    VALID_CREDENTIALS = [
+      ...validCreds,
+      { username: 'admin', password: '8804114' }
+    ];
+    
+    console.log('═══════════════════════════════════════');
+    console.log('✓ CREDENTIALS LOADED SUCCESSFULLY');
+    console.log('Total credentials:', VALID_CREDENTIALS.length);
+    console.log('Usernames:', VALID_CREDENTIALS.map(c => c.username).join(', '));
+    console.log('═══════════════════════════════════════');
+    
+    credentialsLoaded = true;
+    loadingMsg.style.display = 'none';
+    
+    // If already logged in from session, load data
+    if (sessionStorage.getItem('vs-auth') === 'ok') {
+      const savedUser = sessionStorage.getItem('vs-user') || 'admin';
+      currentUserEl.textContent = savedUser;
+      loginOverlay.classList.add('hidden');
+      appView.classList.remove('hidden');
+      loadData();
+    }
+    
+  } catch (error) {
+    console.error('═══════════════════════════════════════');
+    console.error('✗ CREDENTIAL LOADING FAILED');
+    console.error('Error type:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('═══════════════════════════════════════');
+    
+    // Use fallback credentials
+    VALID_CREDENTIALS = [
+      { username: 'admin', password: '8804114' }
+    ];
+    
+    console.log('Using fallback credentials:', VALID_CREDENTIALS);
+    
+    credentialsLoaded = true;
+    loadingMsg.style.display = 'none';
+    
+    // Show error message
+    loginError.textContent = `Could not load passcore.json: ${error.message}. Using fallback credentials.`;
+    loginError.classList.add('show');
+    
+    // If already logged in from session, load data
+    if (sessionStorage.getItem('vs-auth') === 'ok') {
+      const savedUser = sessionStorage.getItem('vs-user') || 'admin';
+      currentUserEl.textContent = savedUser;
+      loginOverlay.classList.add('hidden');
+      appView.classList.remove('hidden');
+      loadData();
+    }
+  }
+}
+
+// Check existing session and load credentials
+if (sessionStorage.getItem('vs-auth') === 'ok') {
+  // We have a session, load credentials first
+  loadCredentials();
+} else {
+  // No session, load credentials and show login
+  loadCredentials();
+}
+
+// Event listeners
+loginBtn.addEventListener('click', attemptLogin);
+clearBtn.addEventListener('click', () => {
+  usernameEl.value = '';
+  passwordEl.value = '';
+  loginError.classList.remove('show');
+  usernameEl.focus();
+});
+
+usernameEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter') attemptLogin();
+});
+passwordEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter') attemptLogin();
+});
+
+logoutBtn.addEventListener('click', showLogin);
+dashboardBtn.addEventListener('click', () => showDashboard());
+closeDashboardBtn.addEventListener('click', () => dashboardDlg.close());
+
+// Add click handler for external dashboard link to pass session data
+externalDashboardBtn.addEventListener('click', (e) => {
+  // Pass authentication data via URL parameters
+  const user = sessionStorage.getItem('vs-user') || currentUserEl.textContent;
+  const authToken = sessionStorage.getItem('vs-auth');
+  
+  if (authToken === 'ok') {
+    // Add authentication info to the URL
+    const url = new URL(e.target.href);
+    url.searchParams.set('auth', authToken);
+    url.searchParams.set('user', user);
+    e.target.href = url.toString();
+  }
+});
+
+// Data loading
+async function loadData() {
+  try {
+    console.log('Loading data from ./evault_core.json');
+    const response = await fetch('./evault_core.json');
+    
+    if (!response.ok) {
+      throw new Error(`Failed to load data: ${response.status}`);
+    }
+    
+    const jsonData = await response.json();
+    console.log('Data loaded successfully:', jsonData);
+    
+    // Check if data is an array
+    if (Array.isArray(jsonData)) {
+      DATA = jsonData;
+    } else {
+      // Try to find array in response
+      DATA = Object.values(jsonData).find(val => Array.isArray(val)) || [];
+    }
+    
+    console.log(`Loaded ${DATA.length} records`);
+    
+    if (DATA.length === 0) {
+      console.warn('No data found, using sample data');
+      DATA = getSampleData();
+    }
+    
+    // Initialize app
+    initializeApp();
+    
+  } catch (error) {
+    console.error('Error loading data:', error);
+    DATA = getSampleData();
+    initializeApp();
+  }
+}
+
+function getSampleData() {
+  return [
+    {
+      "Created Date": "2024-12-14T09:58:27Z",
+      "I am felling": "Insecurity",
+      "vb_Anonymous": "I really enjoy talking about philosophy especially with my grandpa because even if we disagree it's really interesting and fun...",
+      "ID": "00vc1",
+      "Updated Date": "2024-12-14T09:58:27Z",
+      "Owner": "76471ebd-28d1-4f68-81f3-10283faa90e7"
+    },
+    {
+      "Created Date": "2024-04-08T04:37:00Z",
+      "I am felling": "Boredom",
+      "vb_Anonymous": "Bored out of my mind",
+      "ID": "00vc2",
+      "Updated Date": "2024-04-08T04:37:00Z",
+      "Owner": "d499a448-6d10-4b6d-aa89-ed800c8331b5"
+    },
+    {
+      "Created Date": "2024-06-30T22:10:32Z",
+      "I am felling": "Confusion",
+      "vb_Anonymous": "I don't know Who or what I am anymore I'm sick of being made out as the calm sweet Christian...",
+      "ID": "00vc3",
+      "Updated Date": "2024-06-30T22:10:32Z",
+      "Owner": "652a77d5-df29-4a3b-a240-cd56ca9fd292"
+    },
+  ];
+}
+
+// Utility functions
+function formatDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? iso : d.toLocaleString();
+}
+
+function buildFeelingList() {
+  const feelings = [...new Set(DATA.map(item => item["I am felling"]).filter(Boolean))].sort();
+  els.feeling.innerHTML = '<option value="">All feelings</option>' + 
+    feelings.map(f => `<option value="${f}">${f}</option>`).join('');
+  
+  const feelingCountEl = document.getElementById('feelingCount');
+  if (feelingCountEl) feelingCountEl.textContent = feelings.length;
+}
+
+function calculateFeelingStats() {
+  const feelingCounts = {};
+  
+  DATA.forEach(item => {
+    const feeling = item["I am felling"];
+    if (feeling) {
+      feelingCounts[feeling] = (feelingCounts[feeling] || 0) + 1;
+    }
+  });
+  
+  // Convert to array and sort by count
+  const sortedFeelings = Object.entries(feelingCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10); // Top 10
+  
+  return sortedFeelings;
+}
+
+function showDashboard() {
+  const feelingStats = calculateFeelingStats();
+  const maxCount = feelingStats.length > 0 ? Math.max(...feelingStats.map(f => f[1])) : 0;
+  
+  // Update stats
+  document.getElementById('totalEntries').textContent = DATA.length;
+  document.getElementById('uniqueFeelings').textContent = new Set(DATA.map(item => item["I am felling"]).filter(Boolean)).size;
+  
+  // Build feeling stats HTML
+  const statsContainer = document.getElementById('feelingStats');
+  statsContainer.innerHTML = '';
+  
+  feelingStats.forEach(([feeling, count]) => {
+    const percentage = maxCount > 0 ? (count / maxCount) * 100 : 0;
+    
+    const statItem = document.createElement('div');
+    statItem.className = 'feeling-item';
+    statItem.innerHTML = `
+      <div style="flex: 1;">
+        <div class="feeling-name">${feeling}</div>
+        <div class="feeling-bar">
+          <div class="feeling-fill" style="width: ${percentage}%"></div>
+        </div>
+      </div>
+      <div class="feeling-count">${count}</div>
+    `;
+    
+    statsContainer.appendChild(statItem);
+  });
+  
+  dashboardDlg.showModal();
+}
+
+function applyFilters() {
+  const q = FILTERS.q.toLowerCase();
+  
+  VIEW = DATA.filter(d => {
+    if (FILTERS.feeling && d["I am felling"] !== FILTERS.feeling) return false;
+    
+    if (FILTERS.from) {
+      const fromDate = new Date(FILTERS.from + "T00:00:00");
+      const itemDate = new Date(d["Created Date"]);
+      if (itemDate < fromDate) return false;
+    }
+    
+    if (FILTERS.to) {
+      const toDate = new Date(FILTERS.to + "T23:59:59.999");
+      const itemDate = new Date(d["Created Date"]);
+      if (itemDate > toDate) return false;
+    }
+    
+    if (q) {
+      const searchText = JSON.stringify(d).toLowerCase();
+      if (!searchText.includes(q)) return false;
+    }
+    
+    return true;
+  }).sort((a, b) => {
+    const dateA = new Date(a["Created Date"]);
+    const dateB = new Date(b["Created Date"]);
+    return FILTERS.sort === 'new' ? dateB - dateA : dateA - dateB;
+  });
+  
+  renderGrid();
+}
+
+function renderGrid() {
+  document.getElementById('totalCount').textContent = DATA.length;
+  document.getElementById('shownCount').textContent = VIEW.length;
+  
+  els.grid.innerHTML = VIEW.map(item => `
+    <article class="card" data-id="${item.ID}">
+      <div class="card-head">
+        <div class="feeling">${item["I am felling"] || '—'}</div>
+        <div class="card-id">ID: ${item.ID}</div>
+      </div>
+      <div class="meta">
+        <div><strong>Created:</strong> ${formatDate(item["Created Date"])}</div>
+        <div><strong>Owner:</strong> ${(item.Owner || '—').substring(0,8)}...</div>
+      </div>
+      <div class="body">
+        <p class="snippet">${(item.vb_Anonymous || '').replace(/</g, '&lt;')}</p>
+      </div>
+    </article>
+  `).join('');
+  
+  $$('.card').forEach(card => {
+    card.onclick = () => openDetail(card.dataset.id);
+  });
+}
+
+function openDetail(id) {
+  const item = DATA.find(d => d.ID === id);
+  if (!item) return;
+  
+  els.dlgFeeling.textContent = item["I am felling"] || '—';
+  els.dlgId.textContent = item.ID || '';
+  els.dlgText.textContent = item.vb_Anonymous || '';
+  els.dlgCreated.textContent = formatDate(item["Created Date"]);
+  els.dlgUpdated.textContent = formatDate(item["Updated Date"]);
+  els.dlgOwner.textContent = item.Owner || '—';
+  
+  els.dlg.showModal();
+}
+
+function initializeApp() {
+  console.log('Initializing app with', DATA.length, 'records');
+  
+  // Build feeling dropdown
+  buildFeelingList();
+  
+  // Set up event listeners
+  els.closeDlg.onclick = () => els.dlg.close();
+  
+  els.q.oninput = (e) => {
+    FILTERS.q = e.target.value;
+    applyFilters();
+  };
+  
+  els.feeling.onchange = (e) => {
+    FILTERS.feeling = e.target.value;
+    applyFilters();
+  };
+  
+  els.from.onchange = (e) => {
+    FILTERS.from = e.target.value;
+    applyFilters();
+  };
+  
+  els.to.onchange = (e) => {
+    FILTERS.to = e.target.value;
+    applyFilters();
+  };
+  
+  els.sort.onchange = (e) => {
+    FILTERS.sort = e.target.value;
+    applyFilters();
+  };
+  
+  els.reset.onclick = () => {
+    FILTERS = {q:'',feeling:'',from:'',to:'',sort:'new'};
+    els.q.value = '';
+    els.feeling.value = '';
+    els.from.value = '';
+    els.to.value = '';
+    els.sort.value = 'new';
+    applyFilters();
+  };
+  
+  // Initial render
+  applyFilters();
+}
+
+// Security restrictions
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('keydown', e => {
+  // Block F12
+  if (e.key === 'F12') {
+    e.preventDefault();
+    return false;
+  }
+  
+  // Block Ctrl+U, Ctrl+S, Ctrl+P
+  if (e.ctrlKey && (e.key === 'u' || e.key === 's' || e.key === 'p')) {
+    e.preventDefault();
+    return false;
+  }
+});
+</script>
+</body>
+</html>
